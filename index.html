@@ -81,18 +81,48 @@ body {
   display: flex;
   align-items: flex-start;
 }
+
+/* Hamburger button — mobile only, sits in the topbar */
+.btn-menu {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border); background: var(--white);
+  border-radius: 8px; cursor: pointer; color: var(--text);
+  font-size: 15px; flex-shrink: 0; margin-right: 6px;
+  transition: background .15s;
+}
+.btn-menu:hover { background: var(--bg); }
+
+/* Backdrop shown behind the open drawer on mobile */
+.sidebar-overlay {
+  position: fixed; inset: 0; background: rgba(17,24,39,.45);
+  z-index: 149; display: none;
+}
+.sidebar-overlay.show { display: block; }
+
 .sidebar {
   background: var(--white);
-  border-bottom: 1px solid var(--border);
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 4px;
-  padding: 8px 12px;
-  position: sticky;
-  top: 60px;
-  z-index: 99;
-  overflow-x: auto;
-  flex-shrink: 0;
+  padding: 16px 12px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 250px;
+  z-index: 150;
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transform: translateX(-100%);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+}
+.sidebar.open { transform: translateX(0); }
+.sidebar-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 800; font-size: 15px; color: var(--text);
+  padding: 4px 10px 16px;
 }
 .sidebar-link {
   display: flex; align-items: center; gap: 10px;
@@ -104,26 +134,32 @@ body {
   transition: background .15s, color .15s;
   font-family: 'Plus Jakarta Sans', sans-serif;
   white-space: nowrap;
+  width: 100%; text-align: left;
 }
 .sidebar-link i { width: 16px; text-align: center; flex-shrink: 0; }
 .sidebar-link:hover { background: var(--bg); color: var(--text-sub); }
 .sidebar-link.active { background: var(--primary-light); color: var(--primary); }
-.main-content { flex: 1; min-width: 0; }
+.main-content { flex: 1; min-width: 0; width: 100%; }
 
 @media(min-width: 768px) {
   .app-shell { min-height: calc(100vh - 60px); }
+  .btn-menu { display: none; }
+  .sidebar-overlay { display: none !important; }
+  .sidebar-brand { display: none; }
   .sidebar {
-    flex-direction: column;
-    align-items: stretch;
+    position: sticky;
+    top: 60px;
+    left: auto;
+    bottom: auto;
     width: 220px;
-    border-bottom: none;
-    border-right: 1px solid var(--border);
+    height: auto;
     min-height: calc(100vh - 60px);
-    padding: 20px 14px;
-    overflow-x: visible;
+    box-shadow: none;
+    transform: none;
+    flex-shrink: 0;
   }
-  .sidebar-link { width: 100%; text-align: left; }
 }
+
 
 /* ─── PAGES ─── */
 .page-view { display: none; }
@@ -509,6 +545,9 @@ body.is-dragging { overflow:hidden; }
 
 <header class="topbar">
   <div class="topbar-brand">
+    <button class="btn-menu" id="btnMenu" onclick="toggleSidebar()" aria-label="Buka menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
     <div class="brand-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
     Maintenance
   </div>
@@ -517,9 +556,15 @@ body.is-dragging { overflow:hidden; }
   </div>
 </header>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <div class="app-shell">
 <!-- ══ SIDEBAR ══ -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+    Maintenance
+  </div>
   <button class="sidebar-link active" onclick="switchTab('dashboard',this)">
     <i class="fa-solid fa-gauge-high"></i> Dashboard
   </button>
@@ -938,6 +983,7 @@ function switchTab(name, el) {
   document.querySelectorAll('.sidebar-link').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   el.classList.add('active');
+  closeSidebar();
   /* Saat tab sparepart dibuka: load cache dulu (cepat), lalu refresh jika cache expired */
   if (name === 'sparepart' && spData.length === 0) loadSparepart(false);
   /* Saat tab running hour dibuka: load cache dulu, lalu refresh jika cache expired */
@@ -945,6 +991,25 @@ function switchTab(name, el) {
   /* Saat tab PO/PR dibuka: load cache dulu, lalu refresh jika cache expired */
   if (name === 'popr' && poprData.length === 0) loadPoPr(false);
 }
+
+/* ═══════════════════════════════════════
+   SIDEBAR (mobile off-canvas drawer)
+═══════════════════════════════════════ */
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+function toggleSidebar(){
+  const sb = document.getElementById('sidebar');
+  if(sb.classList.contains('open')) closeSidebar(); else openSidebar();
+}
+window.addEventListener('resize', () => { if(window.innerWidth >= 768) closeSidebar(); });
 
 /* ═══════════════════════════════════════
    DASHBOARD
